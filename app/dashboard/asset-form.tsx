@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { gql } from "@/lib/graphql-client";
 
 export function AssetForm() {
   const [assetName, setAssetName] = useState("");
@@ -13,15 +14,15 @@ export function AssetForm() {
     e.preventDefault();
     setError("");
 
-    const res = await fetch("/api/assets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assetName, serialNumber }),
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Something went wrong.");
+    try {
+      await gql(
+        `mutation($assetName: String!, $serialNumber: String!) {
+          createAsset(assetName: $assetName, serialNumber: $serialNumber) { id }
+        }`,
+        { assetName, serialNumber }
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
       return;
     }
 

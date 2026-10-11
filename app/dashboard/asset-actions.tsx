@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { gql } from "@/lib/graphql-client";
 
 const STATUSES = ["IN_STORAGE", "ASSIGNED", "RETIRED"];
 
@@ -29,14 +30,15 @@ const [serial, setSerial] = useState(serialNumber ?? "");
   const [error, setError] = useState("");
 
   const patch = async (body: object) => {
-    const res = await fetch(`/api/assets/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Failed.");
+    try {
+      await gql(
+        `mutation($id: ID!, $input: UpdateAssetInput!) {
+          updateAsset(id: $id, input: $input) { id }
+        }`,
+        { id, input: body }
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed.");
       return false;
     }
     router.refresh();
@@ -51,7 +53,12 @@ const [serial, setSerial] = useState(serialNumber ?? "");
 
   const handleDelete = async () => {
     if (!confirm("Delete this asset?")) return;
-    await fetch(`/api/assets/${id}`, { method: "DELETE" });
+    try {
+      await gql(`mutation($id: ID!) { deleteAsset(id: $id) }`, { id });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed.");
+      return;
+    }
     router.refresh();
   };
 

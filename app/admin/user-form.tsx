@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { gql } from "@/lib/graphql-client";
 
 export function UserForm() {
   const [name, setName] = useState("");
@@ -30,21 +31,13 @@ export function UserForm() {
       return;
     }
 
-    const res = await fetch("/api/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, role, gender, address, contact }),
-    });
-
-    if (!res.ok) {
-      let message = `Failed (status ${res.status}).`;
-      try {
-        const data = await res.json();
-        message = data.error || message;
-      } catch {
-        // no JSON body
-      }
-      setError(message);
+    try {
+      await gql(
+        `mutation($input: CreateUserInput!) { createUser(input: $input) { id } }`,
+        { input: { name, email, password, role, gender, address, contact } }
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed.");
       return;
     }
 

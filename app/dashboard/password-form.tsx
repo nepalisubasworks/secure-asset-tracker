@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { gql } from "@/lib/graphql-client";
 
 export function PasswordForm() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -13,15 +14,15 @@ export function PasswordForm() {
     setError("");
     setMessage("");
 
-    const res = await fetch("/api/account/password", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Something went wrong.");
+    try {
+      await gql(
+        `mutation($currentPassword: String!, $newPassword: String!) {
+          changePassword(currentPassword: $currentPassword, newPassword: $newPassword)
+        }`,
+        { currentPassword, newPassword }
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
       return;
     }
 

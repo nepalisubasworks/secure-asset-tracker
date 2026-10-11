@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { gql } from "@/lib/graphql-client";
 
 export function UserRowActions({
   id,
@@ -33,20 +34,15 @@ export function UserRowActions({
   }, [error]);
 
   const patch = async (body: object) => {
-    const res = await fetch(`/api/users/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      let message = `Failed (status ${res.status}).`;
-      try {
-        const data = await res.json();
-        message = data.error || message;
-      } catch {
-        // no JSON body, keep generic message
-      }
-      setError(message);
+    try {
+      await gql(
+        `mutation($id: ID!, $input: UpdateUserInput!) {
+          updateUser(id: $id, input: $input) { id }
+        }`,
+        { id, input: body }
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed.");
       return false;
     }
     router.refresh();
@@ -66,16 +62,10 @@ export function UserRowActions({
   const handleDelete = async () => {
     if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
     setError("");
-    const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      let message = `Failed (status ${res.status}).`;
-      try {
-        const data = await res.json();
-        message = data.error || message;
-      } catch {
-        // no JSON body, keep generic message
-      }
-      setError(message);
+    try {
+      await gql(`mutation($id: ID!) { deleteUser(id: $id) }`, { id });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed.");
       return;
     }
     router.refresh();
